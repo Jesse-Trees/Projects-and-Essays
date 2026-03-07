@@ -1,0 +1,223 @@
+---
+title: 'MATH 324 Final Project'
+author: "Jesed Renteria"
+output:
+  pdf_document: default
+---
+
+  
+```{r, include = F, warning=F, message=F}
+# front-matter
+rm(list = ls()) #clear the workspace
+
+library(Stat2Data)
+library(tidyverse)
+library(mosaic)
+library(ggformula)
+library(emmeans)
+
+weatherRawData <- read_csv("~/Math324_Modeling/324 Datasets/weatherAUS.csv")
+weatherData <- weatherRawData %>% na.omit()
+knitr::opts_chunk$set(echo = F)
+```
+
+# 1. Project Description
+
+*Should be in paragraph form (not bullets).  Written formally for a 3rd party such as public policymakers, or an external review board.  As part of your description, consider the following:*
+
+- *Type of study [Designed experiment, Observational study]*
+- *Description of the dataset*
+- *Objective of study*
+
+## 1.1 Research Questions
+
+
+*What are the overarching research questions that the study is targeting? (not just a restatement of the original research questions)*
+
+**Research Question 1:**  
+
+**Research Question 2:**  
+
+
+## 1.2 Variables
+
+*What is (are) possible explanatory and response variables?*
+
+*Create a table here - it should include variable names and types*
+
+# 2. Research Question 1
+
+*One or two sentences reminding the reader what RQ1 is*
+
+## 2.1 Detailed Exploratory Data Analysis (EDA)
+
+*Spend time investigating the data thoroughly and use this section to present figures that allow you to visualize the relationship of the response to different predictors.  Include descriptions of the figures that illustrate what you can learn from them.*
+
+
+## 2.2 Statistical Analysis (Simple Model)
+
+*Describe the statistical analysis that you used to answer the simple forecast model research questions. Be sure to include:*
+
+- *Model Assumptions & how checked/verified*
+- *The requested statistics from the Research Questions and Background Information document*
+- *Interpretation of relevant estimates/statistics/p-values IN CONTEXT*
+
+*You should not include your code. However, I would like to see the code for final models that you are using to answer the research question in the appendix.* 
+
+## 2.3 Statistical Analysis (Best Model)
+
+*Describe the statistical analysis that you used to answer the best model research question. Be sure to include:*
+
+- *Model Assumptions & how checked/verified*
+- *The requested statistics from the Research Questions and Background Information document*
+- *Interpretation of relevant estimates/statistics/p-values IN CONTEXT*
+
+*You should not include your code. However, I would like to see the code for final models that you are using to answer the research question in the appendix.* 
+
+## 2.4 Discussion of RQ2
+*Summary and discuss the results in section 3 as they relate to RQ2. This section should summarize all relevant analyses that lead to your final conclusions/decisions/recommendations.*
+
+# 3. Research Question 2 (Jesed)
+
+```{r}
+perth <- weatherData %>% filter(Location == "Perth")
+brisbane <- weatherData %>% filter(Location == "Brisbane")
+perthandbris <- weatherData %>% filter(Location == "Brisbane" | Location == "Perth")
+
+perth_rain <- perth %>% filter(RainToday == TRUE)
+
+perth_no_rain <- perth %>% filter(RainToday == FALSE)
+
+brisbane_rain <- brisbane %>% filter(RainToday == TRUE)
+
+brisbane_no_rain <- brisbane %>% filter(RainToday == FALSE)
+
+perthModel <- glm(RainTomorrow ~ RainToday, family = "binomial", data = perth)
+brisbaneModel <- glm(RainTomorrow ~ RainToday, family = "binomial", data = brisbane)
+brisPerth <- glm(RainTomorrow ~ RainToday + Location, family = "binomial", data = perthandbris)
+logitperthModel <- glm(RainTomorrow ~ RainToday, family = binomial(link = "logit"), data = perth)
+logitbrisbaneModel <- glm(RainTomorrow ~ RainToday, family = binomial(link = "logit"), data = brisbane)
+
+gf_bar(~ RainToday|RainTomorrow, fill = ~ RainToday, title = "Perth", data = perth)
+gf_bar(~ RainToday|RainTomorrow, fill = ~ RainToday, title = "Brisbane", data = brisbane)
+```
+
+*One or two sentences reminding the reader what RQ2 is*
+Australia is a very large country and we want to look at different regions to see how the logistic regression forecasts differ between two cities in Australia which are Perth from the West Coast and Brisbane from the East Coast of Australia.
+
+## 3.1 Detailed Exploratory Data Analysis (EDA)
+
+*Spend time investigating the data thoroughly and use this section to present figures that allow you to visualize the relationship of the response to different predictors.  Include descriptions of the figures that illustrate what you can learn from them.*
+Looking at the barcharts, there might be a small difference between the two cities from different regions of Australia.
+```{r}
+summary(perthModel)
+summary(brisbaneModel)
+
+predicted_probs_perth <- predict(logitperthModel, type ="response" )
+predicted_probs_brisbane <- predict(logitbrisbaneModel, type ="response")
+
+actual_outcomes_perth <- ifelse(perth$RainTomorrow == "TRUE", 1, 0)
+actual_outcomes_brisbane <- ifelse(brisbane$RainTomorrow == "TRUE", 1, 0)
+
+brier_score_perth <- mean((predicted_probs_perth - actual_outcomes_perth)^2)
+brier_score_brisbane <- mean((predicted_probs_brisbane - actual_outcomes_brisbane)^2)
+
+brier_score_perth
+
+brier_score_brisbane
+
+
+```
+```{r}
+
+bris_prob_rain <- predict(logitbrisbaneModel, newdata = data.frame(RainToday = TRUE), type = "response")
+
+bris_prob_no_rain <- predict(logitbrisbaneModel, newdata = data.frame(RainToday = FALSE), type = "response")
+
+perth_prob_rain <- predict(logitperthModel, newdata = data.frame(RainToday = TRUE), type = "response")
+
+perth_prob_no_rain <- predict(logitperthModel, newdata = data.frame(RainToday = FALSE), type = "response")
+
+
+print(paste("Perth Probability of RainToday:", perth_prob_rain))
+
+print(paste("Perth Probability of No RainToday:", perth_prob_no_rain))
+
+print(paste("Brisbane Probability of RainToday:", bris_prob_rain))
+
+print(paste("Brisbane Probability of No RainToday:", bris_prob_no_rain))
+
+```
+
+```{r}
+print("RainToday or not")
+tally(~ RainToday, data = brisbane)
+
+print("If RainToday = TRUE")
+tally(~ RainTomorrow, data = brisbane_rain)
+
+print("If RainToday = FALSE")
+tally(~ RainTomorrow, data = brisbane_no_rain)
+
+odds_ratio_brisbane <- exp(coef(logitbrisbaneModel)["RainTodayTRUE"])
+odds_ratio_brisbane
+
+```
+
+```{r}
+
+print("RainToday or not")
+tally(~ RainToday, data = perth)
+
+print("If RainToday = TRUE")
+tally(~ RainTomorrow, data = perth_rain)
+
+print("If RainToday = FALSE")
+tally(~ RainTomorrow, data = perth_no_rain)
+
+
+odds_ratio_perth <- exp(coef(logitperthModel)["RainTodayTRUE"])
+odds_ratio_perth
+
+```
+
+## 3.2 Statistical Analysis (Simple Model)
+
+$$Perth:\ \ \hat{\beta_0} = -1.92032 \\ \hat{\beta_1} = 1.98115 \\ \pi = P(RainTomorrow = True) \\ logit function = log(\frac{\pi}{1-\pi}) = -1.92032 + 1.98115\ \times RainToday \\ odds(RainTomrrow = True) = \frac{\pi}{ 1- \pi} = e^{-1.92032 + 1.98115\ \times RainToday} \\ P(RainTomorrow=True) = \pi = \frac{e^{-1.92032 + 1.98115\ \times RainToday}} {1 + e^{-1.92032 + 1.98115\ \times RainToday}} \\ odds \ ratio = \frac{odds_{RainToday,RainTomorrow}}{ odds_{NoRainToday,RainTomorrow}} \\ 592 \ cases \ that \ RainToday \ is \ True, \ and \ 305 \ cases \ RainTomorrow \ is \ True, \ and \ 287 \ cases \ RainTomorrow \ is \ False \\ odds_{RainToday,RainTomorrow} = \frac{305}{287} \\ 2433 \ cases \ that \ RainToday \ is \ False, \ and \ 311 \ cases \ RainTomorrow \ is \ True, \ 2122 \ cases \ RainTomorrow \ is \ False \\ odds_{NoRainToday,RainTomorrow} = \frac{311}{2122} \\ odds \ ratio = \frac{\frac{305}{287}}{\frac{311}{2122}} = 7.251084$$
+$$Brisbane:\ \ \hat{\beta_0} = -1.68671 \\  \hat{\beta_1} = 1.43618 \\ \pi = P(RainTomorrow = True) \\ logit function = log(\frac{\pi}{1-\pi}) = -1.68671 + 1.43618\ \times RainToday \\ odds(RainTomrrow = True) = \frac{\pi}{ 1- \pi} = e^{-1.68671 + 1.43618\ \times RainToday} \\ P(RainTomorrow=True) = \pi = \frac{e^{-1.68671 + 1.43618\ \times RainToday}} {1 + e^{-1.68671 + 1.43618\ \times RainToday}} \\ odds \ ratio = \frac{odds_{RainToday,RainTomorrow}}{ odds_{NoRainToday,RainTomorrow}} \\ 642 \ cases \ that \ RainToday \ is \ True, \ and \ 281 \ cases \ RainTomorrow \ is \ True, \ and \ 361 \ cases \ RainTomorrow \ is \ False \\ odds_{RainToday,RainTomorrow} = \frac{281}{361} \\ 2311 \ cases \ that \ RainToday \ is \ False, \ and \ 361 \ cases \ RainTomorrow \ is \ True, \ 1950 \ cases \ RainTomorrow \ is \ False \\ odds_{NoRainToday,RainTomorrow} = \frac{361}{1950} \\ odds \ ratio = \frac{\frac{281}{361}}{\frac{361}{1950}} = 4.204618$$
+
+
+*Describe the statistical analysis that you used to answer the simple forecast model research questions. Be sure to include:*
+
+- *Model Assumptions & how checked/verified*
+- *The requested statistics from the Research Questions and Background Information document*
+- *Interpretation of relevant estimates/statistics/p-values IN CONTEXT*
+
+*You should not include your code. However, I would like to see the code for final models that you are using to answer the research question in the appendix.* 
+
+## 3.3 Statistical Analysis (Best Model)
+
+*Describe the statistical analysis that you used to answer the best model research question. Be sure to include:*
+
+- *Model Assumptions & how checked/verified*
+- *The requested statistics from the Research Questions and Background Information document*
+- *Interpretation of relevant estimates/statistics/p-values IN CONTEXT*
+
+*You should not include your code. However, I would like to see the code for final models that you are using to answer the research question in the appendix.* 
+
+## 3.4 Discussion of RQ2
+*Summary and discuss the results in section 3 as they relate to RQ2. This section should summarize all relevant analyses that lead to your final conclusions/decisions/recommendations.*
+
+# 4. Conclusions 
+
+*Succinct response to each question laid out in 1.1.  This a summary shorter version of section, and focuses on conclusions rather than the analyses.*
+
+**Research Question 1:**  
+
+**Research Question 2:**  
+
+*(all research questions in 1.1 should be addressed, in the same order)*
+
+# 5. Appendix 
+
+*This section should include the code for the linear models used to answer the research questions, as well as code for any comparisons you are making. *
